@@ -61,6 +61,13 @@ ConVar g_SharedAllNadesCvar;
 ConVar g_FastfowardRequiresZeroVolumeCvar;
 ConVar g_MaxPlacedBotsCvar;
 
+//Noblock
+int Collision_Offsets;
+
+ConVar g_cvPlayerCollision;
+//Noblock
+
+
 // Infinite money data
 ConVar g_InfiniteMoneyCvar;
 
@@ -607,6 +614,13 @@ public void OnPluginStart() {
     PM_AddChatAlias(".break", "sm_break");
   }
 
+  //Noblock
+  Collision_Offsets = FindSendPropInfo("CBaseEntity", "m_CollisionGroup");
+	
+	g_cvPlayerCollision = CreateConVar("sm_noplayerblock_enabled", "1", "1 to enable noblock for players, 0 to disable noblock for players.");
+	//g_cvNadeCollision = CreateConVar("sm_nonadeblock_enabled", "1", "1 to enable noblock for nades, 0 to disable noblock for nades.");
+  //Noblock
+
   // New Plugin cvars
   g_AlphabetizeNadeMenusCvar = CreateConVar("sm_practicemode_alphabetize_nades", "0",
                                             "Whether menus of grenades are alphabetized by name.");
@@ -701,6 +715,7 @@ public void OnPluginStart() {
 
   HookEvent("server_cvar", Event_CvarChanged, EventHookMode_Pre);
   HookEvent("player_spawn", Event_PlayerSpawn);
+  HookEvent("player_spawn", Event_PlayerSpawnPost, EventHookMode_Post);
   HookEvent("player_hurt", Event_BotDamageDealtEvent, EventHookMode_Pre);
   HookEvent("player_hurt", Event_ReplayBotDamageDealtEvent, EventHookMode_Pre);
   HookEvent("player_death", Event_PlayerDeath);
@@ -766,6 +781,19 @@ public Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadca
 
   return Plugin_Continue;
 }
+
+public Action Event_PlayerSpawnPost(Event event, const char[] name, bool dontBroadcast) 
+{
+	int cvPlayerCollision = GetConVarInt(g_cvPlayerCollision);
+	if(cvPlayerCollision == 1)
+	{
+		int user = GetEventInt(event, "userid");
+		int client = GetClientOfUserId(user);
+	
+		SetEntData(client, Collision_Offsets, 2, 1, true);
+	}
+}
+
 
 public void OnClientConnected(int client) {
   g_CurrentSavedGrenadeId[client] = -1;
@@ -1084,9 +1112,10 @@ public void PerformNoclipAction(int client) {
   MoveType t = GetEntityMoveType(client);
   MoveType next = (t == MOVETYPE_WALK) ? MOVETYPE_NOCLIP : MOVETYPE_WALK;
   SetEntityMoveType(client, next);
-
+  
   if (next == MOVETYPE_WALK) {
     SetEntProp(client, Prop_Data, "m_CollisionGroup", 5);
+    SetEntData(client, Collision_Offsets, 2, 1, true);
   } else {
     SetEntProp(client, Prop_Data, "m_CollisionGroup", 0);
   }
